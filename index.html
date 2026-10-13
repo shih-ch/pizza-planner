@@ -157,7 +157,7 @@ a.ext:hover{color:var(--sauce)}
     <div class="tbl"><table><thead><tr><th>優惠</th><th>基本價</th><th>超值</th><th>經典</th><th>私廚</th><th>期間限定</th></tr></thead><tbody id="feeRows"></tbody></table></div>
     <p class="note">分享餐每份價格＝基本價＋口味等級加價＋餅皮加價。欄位留空代表這個等級不能選，目前假設只能選超值系列。<br>以下兩項已照官網／APP 規則自動計算，不用填：三個大比薩 93039（第 1 個限原價 $565～$790、不補差價；第 2、3 個原價超過 $620 的部分補差價）、APP 券 94667（全口味原價 5 折、無條件捨去，芝心加價 8 折，每個送烤雞 1 盤）。</p>
   </details>
-  <div class="legend"><span><span class="ptag app">APP 專屬</span>要用必勝客 APP 下單</span><span><span class="ptag app maybe">可能 APP 專屬</span>官網寫法不一，待確認</span><span><span class="ptag gen">一般優惠</span>官網、電話、APP 都可</span><span><span class="ptag set">套餐</span>一般套餐</span></div>
+  <div class="legend"><span><span class="ptag app">APP 專屬</span>要用必勝客 APP 下單</span><span><span class="ptag gen">一般優惠</span>官網、電話、APP 都可</span><span><span class="ptag set">套餐</span>一般套餐</span></div>
 </section>
 <section class="panel" id="datebox" aria-label="活動期限"></section>
 
@@ -268,7 +268,7 @@ const SETS=[
  {id:'h1',name:'Hot拼盤經典餐（外帶）',price:999,reg:2,ch:0,box:0,inc:{},extra:'指定拼盤×1',takeout:true},
  {id:'h2',name:'Hot拼盤樂享餐',price:1288,reg:3,ch:0,box:0,inc:{},extra:'指定拼盤×1'},
  {id:'h3',name:'Hot拼盤豪華餐',price:1888,reg:4,ch:0,box:0,inc:{},extra:'指定拼盤×2、網購好禮'},
- {id:'a1',name:'三個大比薩（93039）',price:799,reg:3,ch:0,box:0,inc:{},anyFlavor:true,appMaybe:true}
+ {id:'a1',name:'三個大比薩（93039）',price:799,reg:3,ch:0,box:0,inc:{},anyFlavor:true,app:true}
 ];
 const BOX_EQ=3; // 一公尺派對盒 = 方形帕瑪森鬆厚大比薩 3 個（官網）
 const NP={ital:{name:'義式炸雞',t6:269,t9:399,d6:390,d9:585},kaz:{name:'咔滋雞腿（辣）',t6:299,t9:444,d6:420,d9:630},prov:{name:'普羅旺斯烤雞',t6:269,t9:399,d6:390,d9:585}};
@@ -296,7 +296,8 @@ const PROMOS=[
  {name:'平日外帶限時價（94199 $199／94299 $299／私廚 6 折）',end:null,note:'官網標示平日外帶，週末不適用',weekdayOnly:true},
  {name:'APP 券 94667：外帶單點大比薩 5 折＋送烤雞',end:null,note:'APP 寫「限時」，未標期限、平假日與每單張數'},
  {name:'外送券 94700／94777：單點大比薩 7 折',end:null,note:'官網未標期限與每單張數；94777 標題寫送烤雞但內文未寫'},
- {name:'大比薩分享餐 $399、外送買大送小 93044、三個大比薩 93039',end:null,note:'官網未標期限；分享餐口味為「指定大比薩」'},
+ {name:'APP 三個大比薩 93039：$799 起',end:null,note:'APP 寫「限時折扣」，未標期限；第 1 個限原價 $565～$790，第 2、3 個原價超過 $620 部分補差價'},
+ {name:'大比薩分享餐 $399、外送買大送小 93044',end:null,note:'官網未標期限；分享餐口味為「指定大比薩」'},
  {name:'各項優惠不得併用',end:null,note:'不同優惠需分開下單，推薦方案會標示要分幾張單'},
  {name:'必勝客 預約訂購',end:null,note:'最多可提前 7 天預訂',preorder:true},
  {name:'必勝客 外帶買大送大',end:null,note:'官網未標期限與每單上限'},
@@ -468,7 +469,7 @@ function evalPlan(sets,st=STRAT.orig){
 
 const SET_GROUPS=[['g_big','10 人以上套餐'],['g_hot','Hot 拼盤餐'],['g_meter','一公尺派對盒'],['g_three','三個大比薩（93039）']];
 const setGroup=s=>s.id.startsWith('h')?'g_hot':s.id==='m1'?'g_meter':s.id==='a1'?'g_three':'g_big';
-const TOGGLE_LIST=()=>[...SET_GROUPS.map(([id,n])=>({id,n,tag:id==='g_three'?'maybe':'set'})),...STRATS.filter(s=>s.id!=='orig').map(s=>({id:s.id,n:s.name+(s.code?'（'+s.code+'）':''),tag:promoKind(s),na:!s.ok()}))];
+const TOGGLE_LIST=()=>[...SET_GROUPS.map(([id,n])=>({id,n,tag:id==='g_three'?'app':'set'})),...STRATS.filter(s=>s.id!=='orig').map(s=>({id:s.id,n:s.name+(s.code?'（'+s.code+'）':''),tag:promoKind(s),na:!s.ok()}))];
 function renderFees(){
   const T=['value','classic','chef','limited'];
   $('feeRows').innerHTML=Object.entries(CFEE_DEF).map(([g,d])=>`<tr><td>${ptag('gen')}${d.name}</td>
@@ -617,7 +618,7 @@ function renderRecs(){
     $('recs').innerHTML=list.map((p,i)=>{
       const diff=p.baseTotal-p.total, L=[];
       const sg=new Map();p.sets.forEach(s=>sg.set(s.id,{s,k:(sg.get(s.id)?.k||0)+1}));
-      sg.forEach(({s,k})=>L.push([(s.appMaybe?ptag('maybe'):'')+s.name+(k>1?' ×'+k:'')+lnk(URLS.set(s.id),SET_URL[s.id]?'官網':'優惠頁'),fmt(s.price*k)]));
+      sg.forEach(({s,k})=>L.push([(s.app?ptag('app'):'')+s.name+(k>1?' ×'+k:'')+lnk(URLS.set(s.id),SET_URL[s.id]?'官網':'優惠頁'),fmt(s.price*k)]));
       if(p.inSet) L.push([`清單中 ${p.inSet} 個比薩放進套餐（口味補差價／餅皮加價${p.sets.every(x=>x.id==='a1')?'':'＊'}）`,fmt(p.surcharge)]);
       const nPair=p.buy.lines.filter(l=>l.kind!=='single').length, nCoupon=p.buy.lines.filter(l=>l.kind==='single'&&l.coupon).length, nOrig=p.buy.lines.filter(l=>l.kind==='single'&&!l.coupon).length;
       if(nPair) L.push([`${ptag(promoKind(p.st))}${p.st.name} ×${nPair} 組${lnk(p.st.id==='bogo'?URLS.bogo:URLS.coupon,p.st.id==='bogo'?'官網':'優惠券')}`,'']);
@@ -630,7 +631,7 @@ function renderRecs(){
       const est=p.inSet&&p.surcharge&&!p.sets.every(x=>x.id==='a1')?'＊套餐加價為估計值，可在下方「估計值設定」修改':'';
       return `<article class="card${i===0?' win':''}">
         <div class="rank">${i+1}</div>
-        <div class="title">${esc(p.label)}${i===0?'<span class="badge">最省</span>':''}${p.orders>1?`<span class="badge" style="background:var(--kraft)">分 ${p.orders} 張單</span>`:''}${(()=>{const t=[];if(p.sets.some(x=>x.appMaybe))t.push(ptag('maybe'));if(p.sets.some(x=>!x.appMaybe))t.push(ptag('set'));if(p.buy.used)t.push(ptag(promoKind(p.st)));return t.length?`<div class="tagrow">${[...new Set(t)].join('')}</div>`:'';})()}</div>
+        <div class="title">${esc(p.label)}${i===0?'<span class="badge">最省</span>':''}${p.orders>1?`<span class="badge" style="background:var(--kraft)">分 ${p.orders} 張單</span>`:''}${(()=>{const t=[];if(p.sets.some(x=>x.app))t.push(ptag('app'));if(p.sets.some(x=>!x.app))t.push(ptag('set'));if(p.buy.used)t.push(ptag(promoKind(p.st)));return t.length?`<div class="tagrow">${[...new Set(t)].join('')}</div>`:'';})()}</div>
         <div class="price"><div class="big">${fmt(p.total)}</div><small>每人 ${fmt(p.total/S.people)}</small>${p.baseline?'<small>對照組</small>':diff>0?`<small class="save">比原價省 ${fmt(diff)}</small>`:`<small class="more">比原價多 ${fmt(-diff)}</small>`}</div>
         <ul class="lines">${L.map(([a,b])=>`<li${a.startsWith('　')?' class="minor"':''}><span>${a}</span><span>${b}</span></li>`).join('')}</ul>
         ${p.covered.length?`<div class="bonus">套餐或優惠已含清單裡的：${p.covered.join('、')}</div>`:''}
@@ -677,7 +678,7 @@ function renderOrder(i){
     const inc=[...Object.entries(s.inc).map(([id,q])=>ITEM[id].name+'×'+q*k),s.extra?s.extra+(k>1?'（×'+k+'）':''):''].filter(Boolean);
     if(inc.length) sub.push('套餐附：'+inc.join('、'));
     if(s.ch) sub.push(`含芝心比薩 ${s.ch*k} 個`);
-    ph.push({kind:s.appMaybe?'maybe':null,title:`${s.name} ×${k}`,price:s.price*k,sub,url:URLS.set(s.id)}); gi++;
+    ph.push({kind:s.app?'app':null,title:`${s.name} ×${k}`,price:s.price*k,sub,url:URLS.set(s.id)}); gi++;
   });
   if(p.surcharge) ph.push({title:'口味補差價／餅皮加價',price:p.surcharge,sub:[p.sets.every(x=>x.id==='a1')?'依官網規則計算':'其他套餐的口味加價為估計值']});
   ph.push(...buyRows(p));
