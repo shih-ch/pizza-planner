@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="團體訂比薩試算：先單點選餐，再自動比較必勝客套餐、APP 優惠、買大送大與拿坡里炸雞，找出最省買法。非官方工具。">
+<title>團體比薩試算</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: settings bar on top; menu (left) → cart + recommendations (right). Kraft paper, basil for "fine", sauce red for the winner. */
+:root{
+  --bg:#f6f2ea; --surface:#fffdf8; --ink:#2a241d; --muted:#7a6f61; --line:#e3dacb;
+  --basil:#3f6b3a; --basil-soft:#e4ecdf; --sauce:#b8432b; --sauce-soft:#f6e1da; --kraft:#c9a777; --kraft-soft:#efe4d1;
+  --f-display:"Noto Serif TC","Songti TC",serif;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1b1814; --surface:#25211b; --ink:#efe8dc; --muted:#a89c8b; --line:#3a332a;
+  --basil:#8fbf86; --basil-soft:#2a3527; --sauce:#e9785f; --sauce-soft:#3b241e; --kraft:#a88a5e; --kraft-soft:#332b20; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1b1814; --surface:#25211b; --ink:#efe8dc; --muted:#a89c8b; --line:#3a332a;
+  --basil:#8fbf86; --basil-soft:#2a3527; --sauce:#e9785f; --sauce-soft:#3b241e; --kraft:#a88a5e; --kraft-soft:#332b20; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;padding:0 16px}
+.wrap{max-width:1180px;margin:0 auto;padding-block:24px 48px;display:flex;flex-direction:column;gap:18px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 18px;border-bottom:2px solid var(--kraft);padding-bottom:12px}
+h1{font-family:var(--f-display);font-weight:900;font-size:clamp(25px,4vw,34px);margin:0;letter-spacing:.02em}
+header p{margin:0;color:var(--muted);font-size:14px}
+h2{font-family:var(--f-display);font-size:19px;margin:0 0 10px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+h2 .step{font-family:var(--f-num);font-size:13px;color:var(--surface);background:var(--kraft);border-radius:4px;padding:0 7px}
+h2 small{font-family:var(--f-body);font-weight:400;font-size:13px;color:var(--muted)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+.bar{display:flex;flex-wrap:wrap;gap:14px 26px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.lbl{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--muted)}
+input[type=number],input[type=date],select{font-family:var(--f-num);font-size:15px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+select{font-family:var(--f-body);font-size:14px}
+input[type=number]{width:80px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button,.btn{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:4px 11px;border-radius:999px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--basil);border-color:var(--basil);color:var(--surface)}
+.btn.primary{background:var(--sauce);border-color:var(--sauce);color:var(--surface);font-weight:700}
+.btn.ghost{background:transparent}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--sauce);outline-offset:2px}
+.grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.menu{display:flex;flex-direction:column;gap:2px;max-height:620px;overflow-y:auto;padding-right:4px}
+.mi{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:9px 4px;border-bottom:1px solid var(--line);align-items:center}
+.mi .nm{font-weight:500}
+.mi .sub{font-size:12.5px;color:var(--muted)}
+.mi .pr{font-family:var(--f-num);font-size:13px;text-align:right;white-space:nowrap}
+.mi .pr s{color:var(--muted);font-size:12px}
+.mi .opts{grid-column:1/3;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tier{font-size:11px;font-weight:700;border-radius:4px;padding:0 6px;margin-left:6px;background:var(--kraft-soft);color:var(--muted)}
+.warnTxt{color:var(--sauce);font-size:12px}
+.cart{display:flex;flex-direction:column;gap:6px}
+.cl{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 10px;align-items:center;font-size:14px;padding:6px 0;border-bottom:1px dashed var(--line)}
+.cl .sub{font-size:12px;color:var(--muted)}
+.cl .pr{font-family:var(--f-num);text-align:right}
+.qty{display:flex;align-items:center;gap:4px}
+.qty button{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;font-size:15px;line-height:1}
+.qty span{font-family:var(--f-num);min-width:2ch;text-align:center}
+.sum{display:flex;justify-content:space-between;font-weight:700;padding-top:6px}
+.sum .pr{font-family:var(--f-num)}
+.empty{color:var(--muted);padding:14px 0;font-size:14px}
+.recs{display:flex;flex-direction:column;gap:12px}
+.card{border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:2em minmax(0,1fr) auto;gap:3px 12px;background:var(--surface)}
+.card.win{border:2px solid var(--sauce);background:linear-gradient(var(--sauce-soft),var(--surface) 75%)}
+.rank{font-family:var(--f-display);font-size:24px;font-weight:900;color:var(--kraft);line-height:1.1}
+.win .rank{color:var(--sauce)}
+.title{font-weight:700}
+.badge{display:inline-block;font-size:11px;font-weight:700;background:var(--sauce);color:var(--surface);border-radius:4px;padding:0 7px;margin-left:6px;vertical-align:2px}
+.price{text-align:right}
+.price .big{font-family:var(--f-num);font-size:22px;line-height:1.15}
+.price small{display:block;font-size:12px;font-family:var(--f-num)}
+.save{color:var(--basil)} .more{color:var(--sauce)}
+.lines{grid-column:2/4;font-size:13.5px;margin:4px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px}
+.lines li{display:flex;justify-content:space-between;gap:10px}
+.lines li span:last-child{font-family:var(--f-num);white-space:nowrap}
+.lines li.minor{color:var(--muted);font-size:12.5px}
+.bonus{grid-column:2/4;font-size:12.5px;color:var(--muted);border-top:1px dashed var(--line);padding-top:5px;margin-top:4px}
+.flag{grid-column:2/4;font-size:12.5px;color:var(--sauce)}
+@media (max-width:520px){.card{grid-template-columns:1.6em minmax(0,1fr)}.price{grid-column:2;text-align:left}.lines,.bonus,.flag{grid-column:2}}
+.promo{display:grid;grid-template-columns:4.6em minmax(0,1fr);gap:2px 10px;font-size:13px;margin-top:6px}
+.pill{font-size:11px;font-weight:700;border-radius:4px;padding:1px 6px;text-align:center;align-self:start;margin-top:2px}
+.pill.chk{background:var(--sauce-soft);color:var(--sauce)} .pill.ok{background:var(--basil-soft);color:var(--basil)} .pill.off{background:var(--line);color:var(--muted)}
+details{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+summary{cursor:pointer;font-weight:700}
+.tbl{overflow-x:auto;margin-top:10px}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:520px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;color:var(--muted)}
+.note{font-size:12.5px;color:var(--muted);margin:6px 0 0}
+.fill{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;background:var(--kraft-soft);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.fill .field input{width:64px}
+.np{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+a.ext{color:var(--basil);font-size:12px;font-weight:500;text-decoration:none;border-bottom:1px solid currentColor;white-space:nowrap;margin-left:6px}
+a.ext:hover{color:var(--sauce)}
+.lines li a.ext{font-family:var(--f-body)}
+</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+
+<div class="wrap">
+<header>
+  <h1>團體比薩試算</h1>
+  <p>先照想吃的單點放進清單，再自動找出能幫你省錢的套餐和優惠組合</p>
+</header>
+
+<section class="panel bar" aria-label="基本設定">
+  <div class="field"><label class="lbl" for="evdate">用餐日期</label><input type="date" id="evdate"></div>
+  <div class="field"><label class="lbl" for="people">人數</label><input type="number" id="people" min="1" max="300"></div>
+  <div class="field"><span class="lbl">必勝客取餐</span><div class="seg" id="phMode"><button data-v="delivery">外送</button><button data-v="takeout">外帶</button></div></div>
+  <div class="field"><span class="lbl">必勝客下單管道</span><div class="seg" id="appMode"><button data-v="web">官網／電話</button><button data-v="app">APP（含 APP 專屬優惠）</button></div></div>
+  <div class="field"><span class="lbl">拿坡里取餐</span><div class="seg" id="npMode"><button data-v="delivery">外送</button><button data-v="takeout">外帶</button></div></div>
+</section>
+
+<section class="panel" id="datebox" aria-label="活動期限"></section>
+
+<div class="grid">
+<section class="panel" aria-label="菜單">
+  <h2><span class="step">1</span>單點選餐<small>點選口味、尺寸、餅皮後加入</small></h2>
+  <div class="fill">
+    <div class="field"><label class="lbl" for="fSlices">每人比薩片數</label><input type="number" id="fSlices" step="0.5" min="0"></div>
+    <div class="field"><label class="lbl" for="fChick">每人炸雞塊</label><input type="number" id="fChick" step="0.5" min="0"></div>
+    <div class="field"><label class="lbl" for="fDrink">每人飲料 ml</label><input type="number" id="fDrink" step="50" min="0"></div>
+    <button class="btn" id="fillBtn">依人數快速填入</button>
+  </div>
+  <div class="tabs seg" id="tabs"></div>
+  <div class="menu" id="menu"></div>
+</section>
+
+<div style="display:flex;flex-direction:column;gap:18px;min-width:0">
+<section class="panel" aria-label="我的清單">
+  <h2><span class="step">2</span>我的清單<small id="cartMeta"></small></h2>
+  <div class="cart" id="cart"></div>
+</section>
+<section class="panel" aria-label="推薦方案">
+  <h2><span class="step">3</span>推薦方案<small>同樣吃到清單上的東西，怎麼買最便宜</small></h2>
+  <div class="recs" id="recs"></div>
+  <div class="np" id="npRec"></div>
+</section>
+</div>
+</div>
+
+<details>
+  <summary>估計值設定（可改）</summary>
+  <div class="tbl"><table><thead><tr><th>項目</th><th>數值</th><th>說明</th></tr></thead><tbody id="estRows"></tbody></table></div>
+  <p class="note">官網沒有公開這幾項的金額，先用估計值計算。打電話問到實際數字後填進來，推薦會立即更新。</p>
+</details>
+<details>
+  <summary>套餐內容與計算規則</summary>
+  <div class="tbl"><table><thead><tr><th>套餐</th><th>價格</th><th>比薩</th><th>其他內容</th></tr></thead><tbody id="setRows"></tbody></table></div>
+  <p class="note">必勝客「限時價」官網標示平日外帶，外送或週末一律以原價計；選 APP 管道時外帶單點大比薩以原價 5 折計。外帶買大送大以「每 2 個付較貴那個的原價」計算，送 1 瓶 1.25L 和 1 份副食（5 選 1）。套餐比薩為鬆厚餅皮，放進套餐的比薩依口味等級加價。一公尺派對盒沒有單點對應，算作附贈。</p>
+</details>
+</div>
+
+<script>
+/* ---------- 資料（2026/10/13 查於官網；拿坡里為 2026/5 整理文） ---------- */
+const CHECKED='2026-10-13';
+const TIERS={value:'超值',classic:'經典',chef:'私廚',limited:'期間限定'};
+const PIZZAS=[
+ ['hamburg','濃起司漢堡排','limited',849,429,'萬聖節限定'],
+ ['tako_m','丸勝日式章魚燒','chef',840,504],['truffle','松露干貝鮮蝦起司','chef',899,539],['fr_surf','法式海陸盛宴','chef',899,539],
+ ['thousand','千島海鮮盛宴','chef',869,521],['tako','和風章魚燒','chef',790,474],['philly','費城牛肉起司','chef',790,474],['kbeef','韓風醬烤雪花牛','chef',790,474],
+ ['sea4','經典海鮮四重奏','classic',780,468],['kimchi','韓式泡菜豬五花','classic',770,299],['beef2','鐵板雙牛','classic',750,299],
+ ['mentai','炙燒明太子嫩雞','classic',720,299],['supreme','超級總匯','classic',720,299],['mex','火辣辣墨西哥','classic',700,299,'辣'],
+ ['shawaii','超級夏威夷','classic',690,299],['veg','彩蔬鮮菇','classic',680,299,'奶素'],['pinesea','熱帶鳳梨海鮮總匯','classic',660,199],
+ ['chick2','霸王雙雞','value',595,199],['clam','醬燒鮮蛤田園','value',620,199],['garlicsea','香濃蒜香海鮮','value',620,199],
+ ['four','四小福','value',610,199],['teri','日式照燒雞','value',595,199],['pepperoni','雙層美式臘腸','value',595,199],
+ ['pork','炙燒豬肉總匯','value',565,199],['bacon','蒜香起司燻雞培根','value',565,199],['hawaii','夏威夷','value',565,199]
+].map(([id,name,tier,orig,lim,tag])=>({id,name,tier,orig,lim,tag}));
+const ITEMS=[
+ ['hl_big','HOT海陸大拼盤',499,'plat'],['hs_big','HOT燒大拼盤',449,'plat'],['chk_plat','HOT烤雞拼盤',449,'plat'],['hl_s','HOT海陸小拼盤',269,'plat'],['hs_s','HOT燒小拼盤',239,'plat'],
+ ['cod','黃金和風鱈魚塊 10 個',199,'hot'],['fries','薯金幣（大份）',79,'hot'],['strip','黃金雞柳條 8 條',199,'hot'],['sausage','德國芝心腸',199,'hot'],['cart','黃金雞軟骨',199,'hot'],
+ ['bbq','BBQ烤雞（4翅4腿）',229,'hot'],['bbq2','厚燒醬烤BBQ（2腿2排）',229,'hot'],['ball','酥炸嫩雞球',69,'hot'],['mush','酥炸杏鮑菇',75,'hot'],['tempura','酥炸三味甜不辣',79,'hot'],['pancake','韓式海鮮煎餅',199,'hot'],
+ ['qq5','巧克力QQ球 5 顆',59,'des'],['qq10','巧克力QQ球 10 顆',99,'des'],['tart1','冰藏起司塔 1 顆',59,'des'],['tart6','冰藏起司塔禮盒 6 入',319,'des'],
+ ['bas4','巴斯克起司蛋糕 4 吋',180,'des'],['bas8','巴斯克起司蛋糕 8 吋',888,'des'],
+ ['cola','百事可樂 1.25L',45,'drk'],['sprite','七喜 1.25L',45,'drk'],['gtea','原萃綠茶 1.25L',52,'drk'],['can','百事可樂 330ml',25,'drk']
+].map(([id,name,price,cat])=>({id,name,price,cat}));
+/* ---------- 官網連結 ---------- */
+const PH='https://www.pizzahut.com.tw/order/?mode=step_2';
+const IPD={hamburg:370,tako_m:318,truffle:205,fr_surf:199,thousand:317,tako:30,philly:190,kbeef:282,sea4:314,kimchi:313,beef2:98,mentai:217,supreme:64,mex:351,shawaii:324,veg:60,pinesea:169,chick2:365,clam:359,garlicsea:265,four:20,teri:13,pepperoni:93,pork:334,bacon:309,hawaii:54};
+const TIER_CU={limited:1692,chef:18,classic:17,value:16};
+const PD={qq5:[30,13521],qq10:[30,13509],tart1:[30,4852],tart6:[30,4854],bas4:[30,6576],bas8:[30,18165],cola:[31,5624],sprite:[31,5625],gtea:[31,5017],can:[31,5637]};
+const SET_URL={s1:'&cu=33&p_id=16128',s2:'&cu=33&p_id=5753',s3:'&cu=33&p_id=16129',s4:'&cu=33&p_id=8137',s5:'&cu=33&p_id=12507',s6:'&cu=33&p_id=16894',s7:'&cu=33&p_id=8145',s8:'&cu=33&p_id=8146',s9:'&cu=33&p_id=17983',s10:'&cu=33&p_id=8144',h1:'&cu=14&p_id=4454'};
+const URLS={
+ pizza:id=>`${PH}&ct=2&cu=${TIER_CU[PIZ[id].tier]}&ipd=${IPD[id]}`,
+ item:id=>PD[id]?`${PH}&ct=6&cu=${PD[id][0]}&pd=${PD[id][1]}`:`${PH}&ct=5`,
+ set:id=>SET_URL[id]?PH+SET_URL[id]:`${PH}&ct=1`,
+ bogo:`${PH}&cu=14&p_id=19184`,
+ promo:`${PH}&ct=1`,
+ napoli:'https://www.napoli.com.tw/'
+};
+const lnk=(url,txt='官網')=>`<a class="ext" href="${url}" target="_blank" rel="noopener">${txt} ↗</a>`;
+const ITEM=Object.fromEntries(ITEMS.map(i=>[i.id,i]));
+const PIZ=Object.fromEntries(PIZZAS.map(p=>[p.id,p]));
+const SETS=[
+ {id:'s1',name:'HOT雙拼饗樂餐',price:3299,reg:4,ch:2,box:0,inc:{cola:2,hs_big:2,fries:1}},
+ {id:'s2',name:'HOT豪華歡聚餐',price:3499,reg:6,ch:0,box:0,inc:{chk_plat:1,tart6:1,cod:3,fries:2,qq5:4,cola:3}},
+ {id:'s3',name:'HOT一公尺必勝餐',price:3999,reg:4,ch:0,box:1,inc:{cola:3,bas4:1}},
+ {id:'s4',name:'HOT燒星揪團分享餐',price:4299,reg:9,ch:0,box:0,inc:{cola:5,qq5:4,tart6:2,cod:1}},
+ {id:'s5',name:'HOT燒星派對精選餐',price:4999,reg:12,ch:0,box:0,inc:{tart6:2,bas8:1}},
+ {id:'s6',name:'HOT御選尊爵餐',price:5499,reg:6,ch:3,box:0,inc:{cola:2,hl_big:2}},
+ {id:'s7',name:'HOT燒星芝心分享餐',price:5988,reg:0,ch:12,box:0,inc:{cola:10,qq5:4}},
+ {id:'s8',name:'HOT燒星超值拼盤餐',price:6499,reg:16,ch:0,box:0,inc:{chk_plat:3,cola:7,qq5:4}},
+ {id:'s9',name:'HOT兩公尺慶生餐',price:7777,reg:3,ch:3,box:2,inc:{hs_big:1,bas4:1}},
+ {id:'s10',name:'HOT燒星全員集合豪華餐',price:9888,reg:30,ch:0,box:0,inc:{cola:12,qq5:4}},
+ {id:'m1',name:'一公尺派對盒',price:2199,reg:0,ch:0,box:1,inc:{},extra:'指定副食組合'},
+ {id:'h1',name:'Hot拼盤經典餐（外帶）',price:999,reg:2,ch:0,box:0,inc:{},extra:'指定拼盤×1',takeout:true},
+ {id:'h2',name:'Hot拼盤樂享餐',price:1288,reg:3,ch:0,box:0,inc:{},extra:'指定拼盤×1'},
+ {id:'h3',name:'Hot拼盤豪華餐',price:1888,reg:4,ch:0,box:0,inc:{},extra:'指定拼盤×2、網購好禮'},
+ {id:'a1',name:'APP 3個大比薩',price:799,reg:3,ch:0,box:0,inc:{},app:true,anyFlavor:true}
+];
+const BOX_EQ=3; // 一公尺派對盒 = 方形帕瑪森鬆厚大比薩 3 個（官網）
+const NP={ital:{name:'義式炸雞',t6:269,t9:399,d6:390,d9:585},kaz:{name:'咔滋雞腿（辣）',t6:299,t9:444,d6:420,d9:630},prov:{name:'普羅旺斯烤雞',t6:269,t9:399,d6:390,d9:585}};
+const NP_FAMILY={price:2950,pieces:45,note:'5 組 9 塊義式炸雞＋5 個小比薩＋5 瓶飲料，限外帶、10 人以上'};
+const EST={
+ slL:{v:8,name:'大比薩（13 吋）切幾片',unit:'片',src:'官網未標示，請電話確認'},
+ slS:{v:6,name:'小比薩切幾片',unit:'片',src:'官網未標示，請電話確認'},
+ thin:{v:35,name:'薄脆餅皮加價',unit:'元',src:'2025/11 報導'},
+ parm:{v:65,name:'帕瑪森鬆厚餅皮加價',unit:'元',src:'2025/11 報導'},
+ cheese:{v:115,name:'芝心餅皮加價',unit:'元',src:'2025/11 報導'},
+ volcano:{v:199,name:'火山熔岩餅皮加價',unit:'元',src:'2025/11 報導'},
+ small:{v:0.65,name:'小比薩價格 ÷ 大比薩原價',unit:'倍',src:'依 2025/11 報導大小價差推算'},
+ up_value:{v:0,name:'套餐內換超值口味加價',unit:'元/個'},
+ up_classic:{v:50,name:'套餐內換經典口味加價',unit:'元/個'},
+ up_chef:{v:150,name:'套餐內換私廚口味加價',unit:'元/個'},
+ up_limited:{v:150,name:'套餐內換期間限定口味加價',unit:'元/個'},
+ setCheese:{v:115,name:'套餐鬆厚改芝心加價',unit:'元/個',src:'假設同單點芝心加價'}
+};
+['up_value','up_classic','up_chef','up_limited'].forEach(k=>EST[k].src='官網未公開，估計值');
+const PROMOS=[
+ {name:'必勝客 10人以上套餐',end:null,note:'官網未標期限；價格為「起」價'},
+ {name:'必勝客 大比薩限時價 $199／$299／私廚 6 折',end:null,note:'官網標示「平日外帶」，週末不適用',weekdayOnly:true},
+ {name:'必勝客 APP 外帶單點大比薩 5 折、APP 3 個大比薩 $799 起',end:null,note:'APP 專屬，官網未標期限'},
+ {name:'必勝客 預約訂購',end:null,note:'最多可提前 7 天預訂',preorder:true},
+ {name:'必勝客 外帶買大送大',end:null,note:'官網未標期限與每單上限'},
+ {name:'必勝客 濃起司漢堡排（萬聖節限定）',end:null,note:'萬聖節檔期口味，月底後可能下架',seasonEnd:'2026-10-31'},
+ {name:'拿坡里 炸雞桶菜單價',end:null,note:'取自 2026/5 整理文，價格可能已調整'},
+ {name:'拿坡里 6 塊炸雞 $199',start:'2026-05-21',end:'2026-06-03',note:'已結束，試算不使用'}
+];
+
+/* ---------- 狀態 ---------- */
+const S={evdate:'2026-11-07',people:30,phMode:'delivery',npMode:'takeout',app:false,tab:'pizza',fSlices:3,fChick:1,fDrink:400,cart:[],est:{}};
+try{const s=JSON.parse(localStorage.getItem('pizzaPlanner3')||'null'); if(s) Object.assign(S,s);}catch(e){}
+for(const k in EST) if(S.est[k]==null) S.est[k]=EST[k].v;
+const save=()=>{try{localStorage.setItem('pizzaPlanner3',JSON.stringify(S))}catch(e){}};
+const $=id=>document.getElementById(id);
+const fmt=n=>'$'+Math.round(n).toLocaleString('zh-TW');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- 單點計價 ---------- */
+const CRUST={pan:'鬆厚',thin:'薄脆',parm:'帕瑪森鬆厚',cheese:'芝心',volcano:'火山熔岩'};
+const crustFee=c=>c==='pan'?0:(S.est[c]||0);
+const isWeekday=()=>{const d=new Date(S.evdate+'T12:00:00').getDay();return d>=1&&d<=5;};
+const limOK=()=>S.phMode==='takeout'&&isWeekday();
+function priceMode(){ // 單點大比薩用哪種價格
+  if(S.phMode!=='takeout') return 'orig';
+  if(S.app) return limOK()?'best':'half';
+  return limOK()?'lim':'orig';
+}
+const PM_LABEL={orig:'原價',lim:'平日外帶限時價',half:'APP 外帶 5 折',best:'限時價/APP 5 折取低'};
+function pizzaPrice(line){
+  const p=PIZ[line.ref], m=priceMode();
+  if(line.size==='S') return Math.round(p.orig*S.est.small)+crustFee(line.crust);
+  const base=m==='lim'?p.lim:m==='half'?Math.round(p.orig*0.5):m==='best'?Math.min(p.lim,Math.round(p.orig*0.5)):p.orig;
+  return base+crustFee(line.crust);
+}
+function pizzaOrig(line){const p=PIZ[line.ref];return Math.round(p.orig*(line.size==='S'?S.est.small:1))+(line.size==='L'?crustFee(line.crust):0);}
+function lineAlc(l){
+  if(l.kind==='pizza') return pizzaPrice(l)*l.qty;
+  if(l.kind==='item') return ITEM[l.ref].price*l.qty;
+  return 0;
+}
+
+/* ---------- 拿坡里：最省裝桶 ---------- */
+function npBest(type,n){
+  if(!n) return null;
+  const t=NP[type], sfx=S.npMode==='takeout'?'t':'d', p6=t[sfx+'6'], p9=t[sfx+'9'];
+  let best=null;
+  const famMax=(type==='ital'&&S.npMode==='takeout'&&S.people>=10)?Math.ceil(n/45):0;
+  for(let f=0;f<=famMax;f++) for(let a=0;a<=Math.ceil(n/9);a++){
+    const rest=Math.max(0,n-45*f-9*a), b=Math.ceil(rest/6), cost=f*NP_FAMILY.price+a*p9+b*p6, pcs=45*f+9*a+6*b;
+    if(pcs<n) continue;
+    if(!best||cost<best.cost||(cost===best.cost&&pcs<best.pcs)) best={f,a,b,cost,pcs};
+  }
+  const naive={a:Math.ceil(n/9),cost:Math.ceil(n/9)*p9};
+  return {...best,naive,p6,p9};
+}
+
+/* ---------- 推薦引擎 ---------- */
+function units(){ // 展開大比薩
+  const u=[];
+  S.cart.filter(l=>l.kind==='pizza').forEach(l=>{for(let i=0;i<l.qty;i++) u.push({l,alc:pizzaPrice(l),orig:pizzaOrig(l),tier:PIZ[l.ref].tier,name:PIZ[l.ref].name,crust:l.crust,size:l.size});});
+  return u;
+}
+function itemDemand(){const d={};S.cart.filter(l=>l.kind==='item').forEach(l=>d[l.ref]=(d[l.ref]||0)+l.qty);return d;}
+
+function buyPizzas(list){ // 剩下的比薩：外帶時用 DP 決定哪些配成買大送大
+  const smalls=list.filter(u=>u.size==='S'), larges=list.filter(u=>u.size==='L');
+  let cost=smalls.reduce((s,u)=>s+u.alc,0);
+  if(S.phMode!=='takeout'||larges.length<2){return {cost:cost+larges.reduce((s,u)=>s+u.alc,0),bogo:0,singles:larges.length,pairs:[]};}
+  const L=[...larges].sort((a,b)=>b.orig-a.orig), n=L.length, dp=Array(n+1).fill(0), ch=Array(n+1).fill(0);
+  for(let i=1;i<=n;i++){
+    dp[i]=dp[i-1]+L[i-1].alc; ch[i]=1;
+    if(i>=2){const v=dp[i-2]+Math.max(L[i-2].orig,L[i-1].orig); if(v<dp[i]){dp[i]=v;ch[i]=2;}}
+  }
+  let i=n,bogo=0,singles=0; const pairs=[];
+  while(i>0){if(ch[i]===2){bogo++;pairs.push([L[i-2],L[i-1]]);i-=2;}else{singles++;i--;}}
+  return {cost:cost+dp[n],bogo,singles,pairs};
+}
+
+function evalPlan(sets){
+  const U=units().map(u=>({...u,used:false}));
+  let reg=0,chs=0,box=0,setCost=0; const supply={};
+  const extras=[];
+  sets.forEach(s=>{reg+=s.reg+s.box*BOX_EQ;chs+=s.ch;setCost+=s.price;if(s.extra)extras.push(s.extra);for(const k in s.inc) supply[k]=(supply[k]||0)+s.inc[k];});
+  const anyFlavor=sets.length&&sets.every(s=>s.anyFlavor);
+  const tierUp=t=>anyFlavor&&t!=='limited'?0:(S.est['up_'+t]||0);
+  let surcharge=0, inSet=0;
+  const take=(cands,slots,feeFn)=>{
+    cands.map(u=>({u,g:u.alc-feeFn(u)})).filter(x=>x.g>0).sort((a,b)=>b.g-a.g).slice(0,slots)
+      .forEach(x=>{x.u.used=true;surcharge+=feeFn(x.u);inSet++;slots--;});
+    return slots;
+  };
+  const L=()=>U.filter(u=>!u.used&&u.size==='L');
+  chs=take(L().filter(u=>u.crust==='cheese'),chs,u=>tierUp(u.tier));
+  reg=take(L(),reg,u=>tierUp(u.tier)+(u.crust==='cheese'?S.est.setCheese:0));
+  chs=take(L(),chs,u=>tierUp(u.tier));
+  const left=U.filter(u=>!u.used);
+  const buy=buyPizzas(left);
+  // 品項
+  const dem=itemDemand(); supply.cola=(supply.cola||0)+buy.bogo; // 買大送大的 1.25L
+  let itemCost=0; const covered=[], surplus=[], leftIds=[];
+  const drinkPool=supply.cola||0; delete supply.cola; let dp=drinkPool;
+  for(const k in dem){
+    let need=dem[k];
+    if(k==='cola'||k==='sprite'){const c=Math.min(need,dp);dp-=c;need-=c;if(c)covered.push(ITEM[k].name+'×'+c);}
+    else if(supply[k]){const c=Math.min(need,supply[k]);supply[k]-=c;need-=c;if(c)covered.push(ITEM[k].name+'×'+c);}
+    if(k==='tart1'&&need&&supply.tart6){const c=Math.min(need,supply.tart6*6);supply.tart6-=Math.ceil(c/6);need-=c;covered.push('冰藏起司塔×'+c);}
+    if(k==='qq10'&&need&&supply.qq5){const c=Math.min(need*2,supply.qq5);supply.qq5-=c;need-=Math.floor(c/2);}
+    itemCost+=need*ITEM[k].price;
+    if(need>0) leftIds.push('i:'+k);
+  }
+  left.forEach(u=>leftIds.push('p:'+u.l.ref));
+  if(dp>0) surplus.push('1.25L 汽水×'+dp);
+  for(const k in supply) if(supply[k]>0) surplus.push(ITEM[k].name+'×'+supply[k]);
+  if(reg+chs>0) surplus.push('多出大比薩×'+(reg+chs)+'（套餐預設口味）');
+  extras.forEach(x=>surplus.push(x));
+  if(sets.some(s=>s.box)) surplus.push('一公尺派對盒口味為指定組合');
+  if(buy.bogo) surplus.push('買大送大副食×'+buy.bogo+'（5 選 1）');
+  const total=setCost+surcharge+buy.cost+itemCost;
+  return {sets,total,setCost,surcharge,inSet,buy,itemCost,covered,surplus,leftIds,leftCount:left.length};
+}
+
+function recommend(){
+  const nL=units().filter(u=>u.size==='L').length;
+  const out=[];
+  const base={label:'照清單全部單點',...evalPlan([]),baseline:true};
+  if(S.phMode==='takeout'){ // baseline 不含買大送大
+    const b=units().reduce((s,u)=>s+u.alc,0)+Object.entries(itemDemand()).reduce((s,[k,q])=>s+ITEM[k].price*q,0);
+    base.total=b; base.buy={cost:units().reduce((s,u)=>s+u.alc,0),bogo:0,singles:units().length,pairs:[]};
+    base.itemCost=b-base.buy.cost; base.surplus=[]; base.covered=[];
+    base.leftIds=[...units().map(u=>'p:'+u.l.ref),...Object.keys(itemDemand()).map(k=>'i:'+k)];
+    const bg=evalPlan([]); if(bg.buy.bogo) out.push({label:'單點＋外帶買大送大',...bg});
+  }
+  out.push(base);
+  if(nL>0||Object.keys(itemDemand()).length){
+    const avail=SETS.filter(s=>(!s.takeout||S.phMode==='takeout')&&(!s.app||S.app));
+    const cap=s=>s.reg+s.ch+s.box*BOX_EQ;
+    avail.forEach((s,i)=>{
+      const maxK=Math.min(12,Math.max(1,Math.ceil(nL/Math.max(1,cap(s)))));
+      for(let k=1;k<=maxK;k++) out.push({label:(k>1?k+' × ':'')+s.name,...evalPlan(Array(k).fill(s))});
+      for(let j=i+1;j<avail.length;j++){
+        const t=avail[j];
+        for(let a=1;a<=maxK;a++){
+          const restK=Math.max(1,Math.ceil(Math.max(0,nL-a*cap(s))/Math.max(1,cap(t))));
+          if(a*cap(s)>=nL+cap(s)) break;
+          for(const b of new Set([restK,Math.max(1,restK-1)])) if(b<=12) out.push({label:(a>1?a+' × ':'')+s.name+' ＋ '+(b>1?b+' × ':'')+t.name,...evalPlan([...Array(a).fill(s),...Array(b).fill(t)])});
+        }
+      }
+    });
+  }
+  const seen=new Set();
+  return out.sort((a,b)=>a.total-b.total||a.surplus.length-b.surplus.length)
+    .filter(p=>{const key=p.label;if(seen.has(key))return false;seen.add(key);return true;})
+    .map(p=>({...p,baseTotal:base.total}));
+}
+
+/* ---------- 渲染 ---------- */
+function renderTop(){
+  $('evdate').value=S.evdate; $('people').value=S.people;
+  [['phMode','phMode'],['npMode','npMode']].forEach(([id,k])=>document.querySelectorAll('#'+id+' button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===S[k])));
+  document.querySelectorAll('#appMode button').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.v==='app')===S.app));
+  $('fSlices').value=S.fSlices; $('fChick').value=S.fChick; $('fDrink').value=S.fDrink;
+  const ev=new Date(S.evdate+'T12:00:00'), t=new Date(); t.setHours(12,0,0,0);
+  const days=Math.round((ev-t)/864e5), wd='日一二三四五六'[ev.getDay()], ob=new Date(ev); ob.setDate(ob.getDate()-7);
+  const md=d=>(d.getMonth()+1)+'/'+d.getDate(), sd=s=>s.slice(5).replace('-','/');
+  $('datebox').innerHTML=`<h2>${md(ev)}（${wd}）用餐<small>${days>=0?'距今 '+days+' 天':'日期已過'}・價格查於 ${sd(CHECKED)}・必勝客最早 ${md(ob)} 起可預訂</small></h2>`+
+   PROMOS.map(p=>{let c='chk',g='待確認',note=p.note;
+     if(p.end){if(S.evdate>p.end){c='off';g='已結束';}else if(!p.start||S.evdate>=p.start){c='ok';g='期間內';}}
+     else if(p.seasonEnd&&S.evdate>p.seasonEnd){c='chk';g='可能下架';}
+     else if(p.weekdayOnly){if(isWeekday()){c='ok';g='平日可用';}else{c='off';g='週末不適用';}}
+     else if(p.preorder){c=days>7?'chk':'ok';g=days>7?md(ob)+' 起':'可預訂';note=`最多提前 7 天；${md(ev)} 的訂單最早 ${md(ob)} 可下`;}
+     return `<div class="promo"><span class="pill ${c}">${g}</span><span><b>${p.name}</b>${p.end?`（${p.start?sd(p.start)+'–':''}${sd(p.end)}）`:''}：${note}</span></div>`;}).join('');
+}
+
+const TABS=[['pizza','必勝客比薩'],['plat','拼盤'],['hot','熱烤炸物'],['des','甜點'],['drk','飲料'],['np','拿坡里炸雞']];
+function renderMenu(){
+  $('tabs').innerHTML=TABS.map(([k,n])=>`<button data-t="${k}" aria-pressed="${S.tab===k}">${n}</button>`).join('');
+  const late=S.evdate>'2026-10-31';
+  if(S.tab==='pizza'){
+    $('menu').innerHTML=PIZZAS.map(p=>`<div class="mi">
+      <div><span class="nm">${p.name}</span><span class="tier">${TIERS[p.tier]}</span>${p.tag?`<span class="tier">${p.tag}</span>`:''}${lnk(URLS.pizza(p.id))}
+        ${p.tier==='limited'&&late?'<div class="warnTxt">萬聖節限定，用餐日可能已下架</div>':''}</div>
+      <div class="pr">${(()=>{const v=pizzaPrice({ref:p.id,size:'L',crust:'pan'});return v<p.orig?`<s>${fmt(p.orig)}</s> ${fmt(v)}`:fmt(p.orig);})()}<div class="sub">大 13 吋・${PM_LABEL[priceMode()]}</div></div>
+      <div class="opts">
+        <select id="sz_${p.id}" aria-label="${p.name}尺寸"><option value="L">大 13 吋</option><option value="S">小（約 ${fmt(Math.round(p.orig*S.est.small))}）</option></select>
+        <select id="cr_${p.id}" aria-label="${p.name}餅皮">${Object.entries(CRUST).map(([k,n])=>`<option value="${k}">${n}${k==='pan'?'':' +'+crustFee(k)}</option>`).join('')}</select>
+        <input type="number" id="q_${p.id}" value="1" min="1" max="99" aria-label="${p.name}數量" style="width:56px">
+        <button class="btn primary" data-add="pizza" data-id="${p.id}">加入</button>
+      </div></div>`).join('');
+  } else if(S.tab==='np'){
+    $('menu').innerHTML=Object.entries(NP).map(([k,t])=>{const sfx=S.npMode==='takeout'?'t':'d';return `<div class="mi">
+      <div><span class="nm">拿坡里 ${t.name}</span>${lnk(URLS.napoli)}<div class="sub">6 塊 ${fmt(t[sfx+'6'])}・9 塊 ${fmt(t[sfx+'9'])}（${S.npMode==='takeout'?'外帶':'外送'}）</div></div>
+      <div class="pr">輸入塊數</div>
+      <div class="opts"><input type="number" id="q_np_${k}" value="${Math.ceil(S.people*S.fChick)||9}" min="1" max="500" aria-label="${t.name}塊數" style="width:64px"> 塊
+      <button class="btn primary" data-add="np" data-id="${k}">加入</button></div></div>`;}).join('')+
+      `<p class="note">只要填總塊數，系統自動配成最省的 6 塊桶、9 塊桶組合（外帶 10 人以上會一併比較團購全家餐）。</p>`;
+  } else {
+    $('menu').innerHTML=ITEMS.filter(i=>i.cat===S.tab).map(i=>`<div class="mi">
+      <div><span class="nm">${i.name}</span>${lnk(URLS.item(i.id),PD[i.id]?'官網':'分類頁')}</div><div class="pr">${fmt(i.price)}</div>
+      <div class="opts"><input type="number" id="q_${i.id}" value="1" min="1" max="99" aria-label="${i.name}數量" style="width:56px">
+      <button class="btn primary" data-add="item" data-id="${i.id}">加入</button></div></div>`).join('');
+  }
+}
+
+function lineLabel(l){
+  if(l.kind==='pizza'){const p=PIZ[l.ref];return `${p.name}${lnk(URLS.pizza(l.ref))}<div class="sub">${l.size==='L'?'大':'小'}・${CRUST[l.crust]}</div>`;}
+  if(l.kind==='item') return ITEM[l.ref].name+lnk(URLS.item(l.ref));
+  return `拿坡里 ${NP[l.ref].name}${lnk(URLS.napoli)}<div class="sub">${S.npMode==='takeout'?'外帶':'外送'}・依塊數自動裝桶</div>`;
+}
+function renderCart(){
+  const c=S.cart;
+  if(!c.length){$('cart').innerHTML='<div class="empty">清單是空的。從左邊加入想吃的品項，或用「依人數快速填入」。</div>';$('cartMeta').textContent='';return;}
+  const ph=c.filter(l=>l.store!=='np'), np=c.filter(l=>l.store==='np');
+  const row=(l,i)=>`<div class="cl"><div>${lineLabel(l)}</div>
+    <div class="qty"><button data-dq="${i}" data-d="${l.kind==='np'?-3:-1}" aria-label="減少">−</button><span>${l.qty}</span><button data-dq="${i}" data-d="${l.kind==='np'?3:1}" aria-label="增加">+</button></div>
+    <div class="pr">${l.kind==='np'?l.qty+' 塊':fmt(lineAlc(l))}</div></div>`;
+  const nL=units().filter(u=>u.size==='L').length, nS=units().length-nL, phSum=ph.reduce((s,l)=>s+lineAlc(l),0);
+  $('cart').innerHTML=(ph.length?'<div class="lbl">必勝客</div>'+ph.map(l=>row(l,c.indexOf(l))).join('')+`<div class="sum"><span>單點小計（大比薩以${PM_LABEL[priceMode()]}計）</span><span class="pr">${fmt(phSum)}</span></div>`:'')+
+    (np.length?'<div class="lbl" style="margin-top:10px">拿坡里</div>'+np.map(l=>row(l,c.indexOf(l))).join(''):'')+
+    `<div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn ghost" id="clear">清空清單</button></div>`;
+  const slices=nL*S.est.slL+nS*S.est.slS, chick=np.reduce((s,l)=>s+l.qty,0);
+  $('cartMeta').textContent=`大比薩 ${nL}・小比薩 ${nS}・炸雞 ${chick} 塊・每人約 ${(slices/S.people).toFixed(1)} 片比薩`;
+}
+
+function renderRecs(){
+  const hasPh=S.cart.some(l=>l.store!=='np');
+  if(!hasPh){$('recs').innerHTML='<div class="empty">清單裡還沒有必勝客品項。</div>';}
+  else{
+    const list=recommend().slice(0,5), late=S.evdate>'2026-10-31', hasLimited=S.cart.some(l=>l.kind==='pizza'&&PIZ[l.ref].tier==='limited');
+    $('recs').innerHTML=list.map((p,i)=>{
+      const diff=p.baseTotal-p.total;
+      const L=[];
+      p.sets.forEach(()=>{});
+      if(p.sets.length){const c={};p.sets.forEach(s=>c[s.name]=(c[s.name]||0)+1);for(const n in c){const s=p.sets.find(x=>x.name===n);L.push([n+(c[n]>1?' ×'+c[n]:'')+lnk(URLS.set(s.id),SET_URL[s.id]?'官網':'優惠頁'),fmt(s.price*c[n])]);}}
+      if(p.inSet) L.push([`清單中 ${p.inSet} 個比薩放進套餐（口味/餅皮加價*）`,fmt(p.surcharge)]);
+      if(p.buy.bogo) L.push([`外帶買大送大 ×${p.buy.bogo} 組${lnk(URLS.bogo)}`,'']);
+      if(p.buy.singles) L.push([`其餘比薩單點 ×${p.buy.singles}${priceMode()!=='orig'?lnk(URLS.promo,'優惠頁'):''}`,'']);
+      if(p.buy.bogo||p.buy.singles) L.push(['　比薩小計',fmt(p.buy.cost)]);
+      if(p.itemCost) L.push(['其餘副食、甜點、飲料單點',fmt(p.itemCost)]);
+      const flags=[];
+      if(p.sets.length) flags.push('套餐價');
+      if(p.buy.bogo) flags.push('買大送大');
+      if(priceMode()!=='orig'&&(p.buy.singles||p.baseline)) flags.push(PM_LABEL[priceMode()]);
+      if(p.sets.some(s=>s.app)) flags.push('APP 3個大比薩');
+      const est=p.inSet&&p.surcharge?'＊加價為估計值，可在下方「估計值設定」修改':'';
+      return `<article class="card${i===0?' win':''}">
+        <div class="rank">${i+1}</div>
+        <div class="title">${esc(p.label)}${i===0?'<span class="badge">最省</span>':''}</div>
+        <div class="price"><div class="big">${fmt(p.total)}</div>${p.baseline?'<small>對照組</small>':diff>0?`<small class="save">比單點省 ${fmt(diff)}</small>`:`<small class="more">比單點多 ${fmt(-diff)}</small>`}</div>
+        <ul class="lines">${L.map(([a,b])=>`<li${a.startsWith('　')?' class="minor"':''}><span>${a}</span><span>${b}</span></li>`).join('')}</ul>
+        ${(()=>{const ids=[...new Set(p.leftIds||[])];return ids.length?`<div class="bonus">單點品項：${ids.map(id=>id.startsWith('p:')?PIZ[id.slice(2)].name+lnk(URLS.pizza(id.slice(2))):ITEM[id.slice(2)].name+lnk(URLS.item(id.slice(2)))).join('、')}</div>`:'';})()}
+        ${p.covered.length?`<div class="bonus">套餐已含清單裡的：${p.covered.join('、')}</div>`:''}
+        ${p.surplus.length?`<div class="bonus">另外多送：${p.surplus.join('、')}</div>`:''}
+        ${est?`<div class="bonus">${est}</div>`:''}
+        ${flags.length?`<div class="flag">下單前確認 ${S.evdate.slice(5).replace('-','/')} 仍適用：${flags.join('、')}${hasLimited&&late?'；清單含萬聖節限定口味':''}</div>`:''}
+      </article>`;}).join('');
+  }
+  // 拿坡里
+  const np=S.cart.filter(l=>l.store==='np');
+  if(!np.length){$('npRec').innerHTML='';return;}
+  let tot=0,naive=0;
+  const rows=np.map(l=>{const b=npBest(l.ref,l.qty);tot+=b.cost;naive+=b.naive.cost;
+    const parts=[];if(b.f)parts.push('團購全家餐 ×'+b.f);if(b.a)parts.push('9 塊桶 ×'+b.a);if(b.b)parts.push('6 塊桶 ×'+b.b);
+    return `<li><span>${NP[l.ref].name} ${l.qty} 塊 → ${parts.join('、')}（共 ${b.pcs} 塊）</span><span>${fmt(b.cost)}</span></li>`;}).join('');
+  $('npRec').innerHTML=`<div class="lbl">拿坡里（另一筆訂單・${S.npMode==='takeout'?'外帶':'外送'}）${lnk(URLS.napoli)}</div>
+    <ul class="lines" style="margin-top:6px">${rows}<li style="font-weight:700"><span>拿坡里合計</span><span>${fmt(tot)}</span></li></ul>
+    ${naive>tot?`<p class="note">比全部用 9 塊桶省 ${fmt(naive-tot)}。</p>`:''}
+    <p class="note" style="color:var(--sauce)">價格取自 2026/5 菜單，下單前確認 ${S.evdate.slice(5).replace('-','/')} 的價格。</p>`;
+}
+
+function renderStatic(){
+  $('estRows').innerHTML=Object.entries(EST).map(([k,e])=>`<tr><td>${e.name}</td><td><input type="number" id="e_${k}" data-e="${k}" value="${S.est[k]}" step="${k==='small'?0.05:k.startsWith('sl')?1:5}" min="0"> ${e.unit}</td><td>${e.src||'估計值'}</td></tr>`).join('');
+  $('setRows').innerHTML=SETS.map(s=>`<tr><td>${s.name}${s.app?'（APP）':''}${lnk(URLS.set(s.id),SET_URL[s.id]?'官網':'優惠頁')}</td><td>${fmt(s.price)} 起</td><td>${[s.reg?'鬆厚×'+s.reg:'',s.ch?'芝心×'+s.ch:'',s.box?'一公尺盒×'+s.box+'（＝大比薩 '+s.box*BOX_EQ+' 個）':''].filter(Boolean).join('、')}</td><td>${[...Object.entries(s.inc).map(([k,q])=>ITEM[k].name+'×'+q),s.extra||''].filter(Boolean).join('、')||'—'}</td></tr>`).join('');
+}
+function renderAll(){renderTop();renderMenu();renderCart();renderRecs();}
+
+/* ---------- 動作 ---------- */
+function addLine(nl){
+  const same=S.cart.find(l=>l.kind===nl.kind&&l.ref===nl.ref&&l.size===nl.size&&l.crust===nl.crust);
+  if(same) same.qty+=nl.qty; else S.cart.push(nl);
+}
+$('menu').addEventListener('click',e=>{
+  const b=e.target.closest('[data-add]'); if(!b) return; const id=b.dataset.id, k=b.dataset.add;
+  if(k==='pizza'){const q=Math.max(1,parseInt($('q_'+id).value)||1);addLine({store:'ph',kind:'pizza',ref:id,size:$('sz_'+id).value,crust:$('cr_'+id).value,qty:q});}
+  else if(k==='item'){addLine({store:'ph',kind:'item',ref:id,qty:Math.max(1,parseInt($('q_'+id).value)||1)});}
+  else {addLine({store:'np',kind:'np',ref:id,qty:Math.max(1,parseInt($('q_np_'+id).value)||1)});}
+  b.textContent='已加入 ✓'; setTimeout(()=>{b.textContent='加入'},900);
+  save();renderCart();renderRecs();
+});
+$('cart').addEventListener('click',e=>{
+  if(e.target.id==='clear'){S.cart=[];save();renderCart();renderRecs();return;}
+  const b=e.target.closest('[data-dq]'); if(!b) return;
+  const l=S.cart[+b.dataset.dq]; l.qty+= +b.dataset.d; if(l.qty<=0) S.cart.splice(+b.dataset.dq,1);
+  save();renderCart();renderRecs();
+});
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(!b)return;S.tab=b.dataset.t;save();renderMenu();});
+$('appMode').addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(!b)return;S.app=b.dataset.v==='app';save();renderAll();});
+['phMode','npMode'].forEach(id=>$(id).addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(!b)return;S[id]=b.dataset.v;save();renderAll();}));
+$('evdate').addEventListener('change',e=>{if(e.target.value){S.evdate=e.target.value;save();renderAll();}});
+$('people').addEventListener('change',e=>{const v=parseInt(e.target.value);if(v>0){S.people=v;save();renderAll();}});
+['fSlices','fChick','fDrink'].forEach(id=>$(id).addEventListener('change',e=>{const v=parseFloat(e.target.value);if(v>=0){S[id]=v;save();}}));
+$('estRows').addEventListener('change',e=>{const k=e.target.dataset.e;const v=parseFloat(e.target.value);if(k&&v>=0){S.est[k]=v;save();renderMenu();renderCart();renderRecs();}});
+$('fillBtn').addEventListener('click',()=>{
+  const chick=Math.ceil(S.people*S.fChick), need=Math.max(0,Math.ceil((S.people*S.fSlices-chick)/S.est.slL));
+  const pop=['supreme','hawaii','teri','pepperoni','four','mentai','chick2','bacon','shawaii','pork'];
+  const veg=Math.max(1,Math.round(S.people/20));
+  S.cart=[];
+  for(let i=0;i<need;i++){ const id=i<veg?'veg':pop[(i-veg)%pop.length]; addLine({store:'ph',kind:'pizza',ref:id,size:'L',crust:'pan',qty:1}); }
+  const drinks=Math.ceil(S.people*S.fDrink/1250); if(drinks) addLine({store:'ph',kind:'item',ref:'cola',qty:drinks});
+  if(chick) addLine({store:'np',kind:'np',ref:'ital',qty:chick});
+  save();renderCart();renderRecs();
+});
+
+/* 首次開啟：放一份 30 人國中生的示範清單 */
+if(!S.cart.length){$('fillBtn').click();}
+renderStatic();renderAll();
+</script>
+<footer style="max-width:1180px;margin:0 auto;padding:0 0 32px;font-size:12.5px;color:var(--muted)">
+非官方工具，與必勝客、拿坡里無關。價格與活動以各品牌官網及門市公告為準。
+</footer>
+
+
+</body>
+</html>
