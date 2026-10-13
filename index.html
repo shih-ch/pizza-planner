@@ -11,17 +11,17 @@
 /* Layout: settings bar on top; menu (left) → cart + recommendations (right). Kraft paper, basil for "fine", sauce red for the winner. */
 :root{
   --bg:#f6f2ea; --surface:#fffdf8; --ink:#2a241d; --muted:#7a6f61; --line:#e3dacb;
-  --basil:#3f6b3a; --basil-soft:#e4ecdf; --sauce:#b8432b; --sauce-soft:#f6e1da; --kraft:#c9a777; --kraft-soft:#efe4d1;
+  --basil:#3f6b3a; --basil-soft:#e4ecdf; --sauce:#b8432b; --sauce-soft:#f6e1da; --kraft:#c9a777; --kraft-soft:#efe4d1; --app:#2c5d8f; --app-soft:#dde8f3;
   --f-display:"Noto Serif TC","Songti TC",serif;
   --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
   --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#1b1814; --surface:#25211b; --ink:#efe8dc; --muted:#a89c8b; --line:#3a332a;
-  --basil:#8fbf86; --basil-soft:#2a3527; --sauce:#e9785f; --sauce-soft:#3b241e; --kraft:#a88a5e; --kraft-soft:#332b20; color-scheme:dark}}
+  --basil:#8fbf86; --basil-soft:#2a3527; --sauce:#e9785f; --sauce-soft:#3b241e; --kraft:#a88a5e; --kraft-soft:#332b20; --app:#8cb9e8; --app-soft:#1d2b3a; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#1b1814; --surface:#25211b; --ink:#efe8dc; --muted:#a89c8b; --line:#3a332a;
-  --basil:#8fbf86; --basil-soft:#2a3527; --sauce:#e9785f; --sauce-soft:#3b241e; --kraft:#a88a5e; --kraft-soft:#332b20; color-scheme:dark}
+  --basil:#8fbf86; --basil-soft:#2a3527; --sauce:#e9785f; --sauce-soft:#3b241e; --kraft:#a88a5e; --kraft-soft:#332b20; --app:#8cb9e8; --app-soft:#1d2b3a; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;padding:0 16px}
 .wrap{max-width:1180px;margin:0 auto;padding-block:24px 48px;display:flex;flex-direction:column;gap:18px}
@@ -108,6 +108,13 @@ a.ext:hover{color:var(--sauce)}
 .ototal span:last-child{font-family:var(--f-num)}
 .ogrand{display:flex;justify-content:space-between;font-family:var(--f-display);font-size:19px;font-weight:900;border-top:2px solid var(--ink);padding-top:8px}
 .ogrand span:last-child{font-family:var(--f-num);font-weight:500}
+.ptag{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:0 6px;margin:0 6px 0 0;vertical-align:1px;white-space:nowrap;border:1px solid transparent}
+.ptag.app{background:var(--app-soft);color:var(--app);border-color:var(--app)}
+.ptag.app.maybe{border-style:dashed}
+.ptag.gen{background:var(--basil-soft);color:var(--basil)}
+.ptag.set{background:var(--kraft-soft);color:var(--muted)}
+.tagrow{grid-column:2/-1;display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--muted);margin-top:8px}
 .ochk{font-size:13px;color:var(--sauce);margin:0;padding-left:18px}
 .lines li a.ext{font-family:var(--f-body)}
 </style>
@@ -144,6 +151,7 @@ a.ext:hover{color:var(--sauce)}
     </div>
   </div>
   <div id="promoToggles" style="display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:10px"></div>
+  <div class="legend"><span><span class="ptag app">APP 專屬</span>要用必勝客 APP 下單</span><span><span class="ptag app maybe">可能 APP 專屬</span>官網寫法不一，待確認</span><span><span class="ptag gen">一般優惠</span>官網、電話、APP 都可</span><span><span class="ptag set">套餐</span>一般套餐</span></div>
 </section>
 <section class="panel" id="datebox" aria-label="活動期限"></section>
 
@@ -234,6 +242,9 @@ const URLS={
  napoli:'https://www.napoli.com.tw/'
 };
 const lnk=(url,txt='官網')=>`<a class="ext" href="${url}" target="_blank" rel="noopener">${txt} ↗</a>`;
+const ptag=k=>k==='app'?'<span class="ptag app">APP 專屬</span>':k==='maybe'?'<span class="ptag app maybe">可能 APP 專屬</span>':k==='gen'?'<span class="ptag gen">一般優惠</span>':'<span class="ptag set">套餐</span>';
+const promoKind=x=>x.app?'app':x.appMaybe?'maybe':'gen';
+const ptxt=k=>k==='app'?'【APP 專屬】':k==='maybe'?'【可能 APP 專屬】':'';
 const ITEM=Object.fromEntries(ITEMS.map(i=>[i.id,i]));
 const PIZ=Object.fromEntries(PIZZAS.map(p=>[p.id,p]));
 const SETS=[
@@ -251,7 +262,7 @@ const SETS=[
  {id:'h1',name:'Hot拼盤經典餐（外帶）',price:999,reg:2,ch:0,box:0,inc:{},extra:'指定拼盤×1',takeout:true},
  {id:'h2',name:'Hot拼盤樂享餐',price:1288,reg:3,ch:0,box:0,inc:{},extra:'指定拼盤×1'},
  {id:'h3',name:'Hot拼盤豪華餐',price:1888,reg:4,ch:0,box:0,inc:{},extra:'指定拼盤×2、網購好禮'},
- {id:'a1',name:'三個大比薩（93039）',price:799,reg:3,ch:0,box:0,inc:{},anyFlavor:true}
+ {id:'a1',name:'三個大比薩（93039）',price:799,reg:3,ch:0,box:0,inc:{},anyFlavor:true,appMaybe:true}
 ];
 const BOX_EQ=3; // 一公尺派對盒 = 方形帕瑪森鬆厚大比薩 3 個（官網）
 const NP={ital:{name:'義式炸雞',t6:269,t9:399,d6:390,d9:585},kaz:{name:'咔滋雞腿（辣）',t6:299,t9:444,d6:420,d9:630},prov:{name:'普羅旺斯烤雞',t6:269,t9:399,d6:390,d9:585}};
@@ -334,7 +345,7 @@ const STRATS=[
  {id:'orig',name:'原價單點',ok:()=>true},
  {id:'lim',name:'平日外帶限時價',code:'94199／94299／私廚 6 折',ok:()=>S.phMode==='takeout'&&isWeekday(),
   price:u=>u.size==='L'?PIZ[u.l.ref].lim+crustFee(u.crust):null,check:'平日外帶限時價'},
- {id:'c94667',name:'APP 券：外帶單點大比薩 5 折＋送烤雞',code:'94667',ok:()=>S.phMode==='takeout'&&S.app,
+ {id:'c94667',name:'APP 券：外帶單點大比薩 5 折＋送烤雞',code:'94667',app:true,ok:()=>S.phMode==='takeout'&&S.app,
   price:u=>u.size==='L'?Math.round(PIZ[u.l.ref].orig*0.5)+crustFee(u.crust):null,
   gift:{chicken:8,text:'BBQ烤雞 8 塊（4翅4腿）或厚燒BBQ（2腿2排）'},check:'APP 券 94667：11/7 週六能否用、一張單可用幾張'},
  {id:'c94700',name:'外送券：單點大比薩 7 折',code:'94700／94777',ok:()=>S.phMode==='delivery',
@@ -426,9 +437,9 @@ function evalPlan(sets,st=STRAT.orig){
 
 const SET_GROUPS=[['g_big','10 人以上套餐'],['g_hot','Hot 拼盤餐'],['g_meter','一公尺派對盒'],['g_three','三個大比薩（93039）']];
 const setGroup=s=>s.id.startsWith('h')?'g_hot':s.id==='m1'?'g_meter':s.id==='a1'?'g_three':'g_big';
-const TOGGLE_LIST=()=>[...SET_GROUPS.map(([id,n])=>({id,n,kind:'套餐'})),...STRATS.filter(s=>s.id!=='orig').map(s=>({id:s.id,n:s.name+(s.code?'（'+s.code+'）':''),kind:'優惠券',na:!s.ok()}))];
+const TOGGLE_LIST=()=>[...SET_GROUPS.map(([id,n])=>({id,n,tag:id==='g_three'?'maybe':'set'})),...STRATS.filter(s=>s.id!=='orig').map(s=>({id:s.id,n:s.name+(s.code?'（'+s.code+'）':''),tag:promoKind(s),na:!s.ok()}))];
 function renderToggles(){
-  $('promoToggles').innerHTML=TOGGLE_LIST().map(t=>`<label class="chk" style="display:flex;gap:6px;align-items:center;font-size:13px${t.na?';opacity:.55':''}"><input type="checkbox" data-off="${t.id}" ${S.off[t.id]?'':'checked'}><span><span class="tier" style="margin:0 4px 0 0">${t.kind}</span>${esc(t.n)}${t.na?'（目前條件不適用）':''}</span></label>`).join('');
+  $('promoToggles').innerHTML=TOGGLE_LIST().map(t=>`<label class="chk" style="display:flex;gap:6px;align-items:center;font-size:13px${t.na?';opacity:.55':''}"><input type="checkbox" data-off="${t.id}" ${S.off[t.id]?'':'checked'}><span>${ptag(t.tag)}${esc(t.n)}${t.na?'（目前條件不適用）':''}</span></label>`).join('');
 }
 function setCombos(){
   const nL=units().filter(u=>u.size==='L').length, out=[[]];
@@ -552,12 +563,12 @@ const pzName=u=>`${u.name}（${u.size==='L'?'大':'小'}・${CRUST[u.crust]}）`
 function buyRows(p){ // 比薩買法 → 明細列 {title,price,sub[],url}
   const rows=[]; const st=p.st;
   const pairs=p.buy.lines.filter(l=>l.kind==='pair'||l.kind==='pairLS');
-  pairs.forEach((l,j)=>rows.push({title:`${st.name} 第 ${j+1} 組${st.code?'（'+st.code+'）':''}`,price:l.price,
+  pairs.forEach((l,j)=>rows.push({kind:promoKind(st),title:`${st.name} 第 ${j+1} 組${st.code?'（'+st.code+'）':''}`,price:l.price,
     sub:[l.units.map(pzName).join(' ＋ '),'付較貴那個的原價；贈 1.25L 飲料＋副食 5 選 1'],url:st.id==='bogo'?URLS.bogo:URLS.coupon}));
   const g=new Map();
   p.buy.lines.filter(l=>l.kind==='single').forEach(l=>{const u=l.units[0];const k=pzName(u)+'|'+l.price+'|'+l.coupon;
     const x=g.get(k)||{u,price:l.price,coupon:l.coupon,n:0};x.n++;g.set(k,x);});
-  g.forEach(x=>rows.push({title:`${x.coupon?st.name+(st.code?'（'+st.code+'）':''):'原價單點'} ${pzName(x.u)} ×${x.n}`,price:x.price*x.n,
+  g.forEach(x=>rows.push({kind:x.coupon?promoKind(st):null,title:`${x.coupon?st.name+(st.code?'（'+st.code+'）':''):'原價單點'} ${pzName(x.u)} ×${x.n}`,price:x.price*x.n,
     sub:[`每個 ${fmt(x.price)}${x.coupon&&x.price<x.u.orig?'（原價 '+fmt(x.u.orig)+'）':''}${x.coupon&&st.gift?'；每個送 '+st.gift.text:''}`],url:x.coupon?URLS.coupon:URLS.pizza(x.u.l.ref)}));
   return rows;
 }
@@ -569,11 +580,11 @@ function renderRecs(){
     $('recs').innerHTML=list.map((p,i)=>{
       const diff=p.baseTotal-p.total, L=[];
       const sg=new Map();p.sets.forEach(s=>sg.set(s.id,{s,k:(sg.get(s.id)?.k||0)+1}));
-      sg.forEach(({s,k})=>L.push([s.name+(k>1?' ×'+k:'')+lnk(URLS.set(s.id),SET_URL[s.id]?'官網':'優惠頁'),fmt(s.price*k)]));
+      sg.forEach(({s,k})=>L.push([(s.appMaybe?ptag('maybe'):'')+s.name+(k>1?' ×'+k:'')+lnk(URLS.set(s.id),SET_URL[s.id]?'官網':'優惠頁'),fmt(s.price*k)]));
       if(p.inSet) L.push([`清單中 ${p.inSet} 個比薩放進套餐（口味/餅皮加價＊）`,fmt(p.surcharge)]);
       const nPair=p.buy.lines.filter(l=>l.kind!=='single').length, nCoupon=p.buy.lines.filter(l=>l.kind==='single'&&l.coupon).length, nOrig=p.buy.lines.filter(l=>l.kind==='single'&&!l.coupon).length;
-      if(nPair) L.push([`${p.st.name} ×${nPair} 組${lnk(p.st.id==='bogo'?URLS.bogo:URLS.coupon,p.st.id==='bogo'?'官網':'優惠券')}`,'']);
-      if(nCoupon) L.push([`${p.st.name} ×${nCoupon} 個${p.st.code?'（券號 '+p.st.code+'）':''}${lnk(URLS.coupon,'優惠券')}`,'']);
+      if(nPair) L.push([`${ptag(promoKind(p.st))}${p.st.name} ×${nPair} 組${lnk(p.st.id==='bogo'?URLS.bogo:URLS.coupon,p.st.id==='bogo'?'官網':'優惠券')}`,'']);
+      if(nCoupon) L.push([`${ptag(promoKind(p.st))}${p.st.name} ×${nCoupon} 個${p.st.code?'（券號 '+p.st.code+'）':''}${lnk(URLS.coupon,'優惠券')}`,'']);
       if(nOrig) L.push([`原價單點比薩 ×${nOrig}`,'']);
       if(p.buy.lines.length) L.push(['　比薩小計',fmt(p.buy.cost)]);
       if(p.itemCost) L.push(['其餘副食、甜點、飲料',fmt(p.itemCost)]);
@@ -583,6 +594,7 @@ function renderRecs(){
       return `<article class="card${i===0?' win':''}">
         <div class="rank">${i+1}</div>
         <div class="title">${esc(p.label)}${i===0?'<span class="badge">最省</span>':''}${p.orders>1?`<span class="badge" style="background:var(--kraft)">分 ${p.orders} 張單</span>`:''}</div>
+        ${(()=>{const t=[];if(p.sets.some(x=>x.appMaybe))t.push(ptag('maybe'));if(p.sets.some(x=>!x.appMaybe))t.push(ptag('set'));if(p.buy.used)t.push(ptag(promoKind(p.st)));return t.length?`<div class="tagrow">${[...new Set(t)].join('')}</div>`:'';})()}
         <div class="price"><div class="big">${fmt(p.total)}</div><small>每人 ${fmt(p.total/S.people)}</small>${p.baseline?'<small>對照組</small>':diff>0?`<small class="save">比原價省 ${fmt(diff)}</small>`:`<small class="more">比原價多 ${fmt(-diff)}</small>`}</div>
         <ul class="lines">${L.map(([a,b])=>`<li${a.startsWith('　')?' class="minor"':''}><span>${a}</span><span>${b}</span></li>`).join('')}</ul>
         ${p.covered.length?`<div class="bonus">套餐或優惠已含清單裡的：${p.covered.join('、')}</div>`:''}
@@ -625,7 +637,7 @@ function renderOrder(i){
     const inc=[...Object.entries(s.inc).map(([id,q])=>ITEM[id].name+'×'+q*k),s.extra?s.extra+(k>1?'（×'+k+'）':''):''].filter(Boolean);
     if(inc.length) sub.push('套餐附：'+inc.join('、'));
     if(s.ch) sub.push(`含芝心比薩 ${s.ch*k} 個`);
-    ph.push({title:`${s.name} ×${k}`,price:s.price*k,sub,url:URLS.set(s.id)}); gi++;
+    ph.push({kind:s.appMaybe?'maybe':null,title:`${s.name} ×${k}`,price:s.price*k,sub,url:URLS.set(s.id)}); gi++;
   });
   if(p.surcharge) ph.push({title:'套餐口味／餅皮升級加價（估計）',price:p.surcharge,sub:['實際加價以官網或門市為準']});
   ph.push(...buyRows(p));
@@ -645,7 +657,7 @@ function renderOrder(i){
   const checks=[...planChecks(p),`必勝客最早 ${ob.getMonth()+1}/${ob.getDate()} 起可預訂；確認送達/取餐時間`];
   const phHead=`必勝客（${S.phMode==='takeout'?'外帶':'外送'}・${S.app?'APP':'官網／電話'}${p.orders>1?'・分 '+p.orders+' 張單':''}）`;
   const npHead=`拿坡里（${S.npMode==='takeout'?'外帶':'外送'}）`;
-  const lineHTML=x=>`<div class="oline"><span>${esc(x.title)}${x.url?lnk(x.url):''}</span><span class="pr">${x.price==null?'':fmt(x.price)}</span>${x.sub.length?`<span class="sub">${x.sub.map(esc).join('<br>')}</span>`:''}</div>`;
+  const lineHTML=x=>`<div class="oline"><span>${x.kind?ptag(x.kind):''}${esc(x.title)}${x.url?lnk(x.url):''}</span><span class="pr">${x.price==null?'':fmt(x.price)}</span>${x.sub.length?`<span class="sub">${x.sub.map(esc).join('<br>')}</span>`:''}</div>`;
   $('orderView').innerHTML=
     `<div class="ostore"><h3>${phHead}</h3>${ph.map(lineHTML).join('')}<div class="ototal"><span>必勝客小計</span><span>${fmt(p.phTotal)}</span></div></div>`+
     (npl.length?`<div class="ostore"><h3>${npHead}${lnk(URLS.napoli)}</h3>${npl.map(lineHTML).join('')}<div class="ototal"><span>拿坡里小計</span><span>${fmt(p.npTotal)}</span></div></div>`:'')+
@@ -660,7 +672,7 @@ let LAST=null;
 function buildOrderText(d){
   LAST=d||LAST; if(!LAST) return; d=LAST;
   const L=$('withLinks').checked, out=[];
-  const line=x=>{out.push(`・${x.title}${x.price==null?'':'　'+fmt(x.price)}`);x.sub.forEach(s=>out.push('　'+s));if(L&&x.url)out.push('　'+x.url);};
+  const line=x=>{out.push(`・${x.kind?ptxt(x.kind):''}${x.title}${x.price==null?'':'　'+fmt(x.price)}`);x.sub.forEach(s=>out.push('　'+s));if(L&&x.url)out.push('　'+x.url);};
   out.push(`【${d.head} 訂購清單】`,`方案：${d.p.label}`,'');
   out.push('■ '+d.phHead); d.ph.forEach(line); out.push(`必勝客小計　${fmt(d.phTotal)}`);
   if(d.npl.length){out.push('','■ '+d.npHead); d.npl.forEach(line); if(L) out.push('　'+URLS.napoli); out.push(`拿坡里小計　${fmt(d.npTotal)}`);}
