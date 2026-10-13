@@ -133,6 +133,18 @@ a.ext:hover{color:var(--sauce)}
   <div class="field"><span class="lbl">拿坡里取餐</span><div class="seg" id="npMode"><button data-v="delivery">外送</button><button data-v="takeout">外帶</button></div></div>
 </section>
 
+<section class="panel" aria-label="納入計算的優惠">
+  <div style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between">
+    <span class="lbl">納入計算的優惠（取消勾選就不使用，推薦方案會重新排序）</span>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="btn" id="offAll">不用優惠券（只留套餐）</button>
+      <button class="btn" id="onAll">全部勾選</button>
+      <button class="btn primary" id="recalc">重新計算</button>
+      <span class="note" id="recalcMsg" style="margin:0"></span>
+    </div>
+  </div>
+  <div id="promoToggles" style="display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:10px"></div>
+</section>
 <section class="panel" id="datebox" aria-label="活動期限"></section>
 
 <div class="grid">
@@ -274,7 +286,7 @@ const PROMOS=[
 ];
 
 /* ---------- 狀態 ---------- */
-const S={evdate:'2026-11-07',people:30,phMode:'delivery',npMode:'takeout',app:false,cLimit:0,split:true,giftOffset:true,tab:'pizza',fSlices:3,fChick:1,fDrink:400,cart:[],est:{}};
+const S={evdate:'2026-11-07',people:30,phMode:'delivery',npMode:'takeout',app:false,cLimit:0,split:true,giftOffset:true,off:{},tab:'pizza',fSlices:3,fChick:1,fDrink:400,cart:[],est:{}};
 try{const s=JSON.parse(localStorage.getItem('pizzaPlanner4')||'null'); if(s) Object.assign(S,s);}catch(e){}
 for(const k in EST) if(S.est[k]==null) S.est[k]=EST[k].v;
 const save=()=>{try{localStorage.setItem('pizzaPlanner4',JSON.stringify(S))}catch(e){}};
@@ -412,10 +424,16 @@ function evalPlan(sets,st=STRAT.orig){
   return {sets,st,phTotal,npTotal:np.cost,np,total:phTotal+np.cost,setCost,surcharge,inSet,buy,itemCost,covered,surplus,itemBuy,setUnits,orders};
 }
 
+const SET_GROUPS=[['g_big','10 人以上套餐'],['g_hot','Hot 拼盤餐'],['g_meter','一公尺派對盒'],['g_three','三個大比薩（93039）']];
+const setGroup=s=>s.id.startsWith('h')?'g_hot':s.id==='m1'?'g_meter':s.id==='a1'?'g_three':'g_big';
+const TOGGLE_LIST=()=>[...SET_GROUPS.map(([id,n])=>({id,n,kind:'套餐'})),...STRATS.filter(s=>s.id!=='orig').map(s=>({id:s.id,n:s.name+(s.code?'（'+s.code+'）':''),kind:'優惠券',na:!s.ok()}))];
+function renderToggles(){
+  $('promoToggles').innerHTML=TOGGLE_LIST().map(t=>`<label class="chk" style="display:flex;gap:6px;align-items:center;font-size:13px${t.na?';opacity:.55':''}"><input type="checkbox" data-off="${t.id}" ${S.off[t.id]?'':'checked'}><span><span class="tier" style="margin:0 4px 0 0">${t.kind}</span>${esc(t.n)}${t.na?'（目前條件不適用）':''}</span></label>`).join('');
+}
 function setCombos(){
   const nL=units().filter(u=>u.size==='L').length, out=[[]];
   if(!nL&&!Object.keys(itemDemand()).length) return out;
-  const avail=SETS.filter(s=>(!s.takeout||S.phMode==='takeout')&&(!s.app||S.app));
+  const avail=SETS.filter(s=>(!s.takeout||S.phMode==='takeout')&&(!s.app||S.app)&&!S.off[setGroup(s)]);
   const cap=s=>s.reg+s.ch+s.box*BOX_EQ;
   avail.forEach((s,i)=>{
     const maxK=Math.min(12,Math.max(1,Math.ceil(nL/Math.max(1,cap(s)))));
@@ -441,7 +459,7 @@ function recommend(){
   const base={...evalPlan([],STRAT.orig),label:'照清單全部原價單點',baseline:true};
   const out=[base];
   const combos=setCombos();
-  STRATS.filter(s=>s.ok()).forEach(st=>combos.forEach(sets=>{
+  STRATS.filter(s=>s.ok()&&!S.off[s.id]).forEach(st=>combos.forEach(sets=>{
     if(!sets.length&&st.id==='orig') return;
     const p=evalPlan(sets,st);
     if(st.id!=='orig'&&!p.buy.used) return;
@@ -654,7 +672,7 @@ function renderStatic(){
   $('estRows').innerHTML=Object.entries(EST).map(([k,e])=>`<tr><td>${e.name}</td><td><input type="number" id="e_${k}" data-e="${k}" value="${S.est[k]}" step="${k==='small'?0.05:k.startsWith('sl')?1:5}" min="0"> ${e.unit}</td><td>${e.src||'估計值'}</td></tr>`).join('');
   $('setRows').innerHTML=SETS.map(s=>`<tr><td>${s.name}${s.app?'（APP）':''}${lnk(URLS.set(s.id),SET_URL[s.id]?'官網':'優惠頁')}</td><td>${fmt(s.price)} 起</td><td>${[s.reg?'鬆厚×'+s.reg:'',s.ch?'芝心×'+s.ch:'',s.box?'一公尺盒×'+s.box+'（＝大比薩 '+s.box*BOX_EQ+' 個）':''].filter(Boolean).join('、')}</td><td>${[...Object.entries(s.inc).map(([k,q])=>ITEM[k].name+'×'+q),s.extra||''].filter(Boolean).join('、')||'—'}</td></tr>`).join('');
 }
-function renderAll(){renderTop();renderMenu();renderCart();renderRecs();}
+function renderAll(){renderTop();renderToggles();renderMenu();renderCart();renderRecs();}
 
 /* ---------- 動作 ---------- */
 function addLine(nl){
@@ -676,6 +694,10 @@ $('cart').addEventListener('click',e=>{
   save();renderCart();renderRecs();
 });
 $('tabs').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(!b)return;S.tab=b.dataset.t;save();renderMenu();});
+$('promoToggles').addEventListener('change',e=>{const k=e.target.dataset.off;if(!k)return;if(e.target.checked)delete S.off[k];else S.off[k]=true;save();renderRecs();});
+$('offAll').addEventListener('click',()=>{STRATS.forEach(s=>{if(s.id!=='orig')S.off[s.id]=true;});S.off.g_three=true;save();renderToggles();renderRecs();});
+$('onAll').addEventListener('click',()=>{S.off={};save();renderToggles();renderRecs();});
+$('recalc').addEventListener('click',()=>{renderAll();const d=new Date();$('recalcMsg').textContent='已重新計算 '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');});
 $('cLimit').addEventListener('change',e=>{const v=parseInt(e.target.value);S.cLimit=v>=0?v:0;save();renderRecs();});
 $('split').addEventListener('change',e=>{S.split=e.target.checked;save();renderRecs();});
 $('giftOffset').addEventListener('change',e=>{S.giftOffset=e.target.checked;save();renderRecs();});
